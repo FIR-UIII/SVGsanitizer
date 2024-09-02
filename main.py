@@ -1,8 +1,9 @@
 import os
 from lxml import etree
+import re 
 import defusedxml
 import defusedxml.ElementTree as DET
-import re
+
 
 def parse_svg(svg_file):
     try:
@@ -10,13 +11,8 @@ def parse_svg(svg_file):
         tree = DET.parse(svg_file)
         root = tree.getroot()
         
-        print(f"[*] Parsing successful. File name: {os.path.basename(svg_file)}")
-        
-        # Detect and report vulnerabilities
-        detect_vulnerabilities(root)
-        
-        # Print SVG metadata
-        print("\n===================\nSVG Metadata:")
+        print(f"\n===================\n[*] Parsing successful. File name: {os.path.basename(svg_file)}")
+        print("SVG Metadata:")
         print(f"Title: {root.get('title')}")
         print(f"Width: {root.get('width')}")
         print(f"Height: {root.get('height')}")
@@ -31,80 +27,77 @@ def parse_svg(svg_file):
     except Exception as e:
         print(f"An error occurred: {e}")
 
-def detect_vulnerabilities(root):
-    print("[*] Detecting vulnerabilities:")
 
-    # Parse child elements
-    child = []
-    child.append([elem.tag for elem in root.iter()])
-    child = child[0]
-    
-    # Check for DTD XML
-    check_dtd(root)
+def search_entity_in_svg(content):
+    '''Search for XXE'''
+    print('[+] Step 1. Searching for XXE')
+    pattern = r'<!ENTITY[^>]*>([\s\S]*?)>'
+    match = re.search(pattern, content, re.IGNORECASE | re.DOTALL)
 
-    # Check for XXE vulnerabilities
-    check_xxe(root)
-    
-    # [+] Check for XSS vulnerabilities
-    check_xss(root)
-    
-    # Check for external resource references
-    check_external_resources(root)
-    
-    # Check for malicious attributes
-    check_malicious_attributes(root)
-
-def check_dtd(root):
-    pass
-
-def check_xxe(element):
-    # Look for XML External Entity (XXE) attacks
-    if element.tag.endswith('['):
-        entity_name = re.search(r'&(\w+;)', element.text).group(1)
-        print(f"Potential XXE vulnerability detected: &{entity_name};")
-
-def check_xss(root):
-    # Look for Cross-Site Scripting (XSS) attempts
-    script_tags = [elem.tag for elem in root.iter() if re.search(r'script', elem.tag, re.IGNORECASE)]
-    print(f">>> Potential XSS vulnerability detected in element: {script_tags}")
-
-def check_external_resources(element):
-    # Check for external resource references
-    if element.attrib.get('href'):
-        print(f"External resource referenced: {element.attrib['href']}")
-
-def check_malicious_attributes(element):
-    # Check for potentially malicious attributes
-    malicious_attrs = ['onmouseover', 'onclick', 'onload']
-    for attr in malicious_attrs:
-        if attr in element.attrib:
-            print(f"Malicious attribute detected: {attr}")
-
-def main():
-    # file_path = input("Enter the path to the SVG file: ")
-    file_path = '/Users/artem/Projects/SVGsanitizer/samples/Deny Of Service - Billion Laugh Attack.xml'
-
-    if os.path.exists(file_path):
-        parse_svg(file_path)
+    if match:  
+        print(f'   [!] Found XXE {match}')     
+        sanitized_content = re.sub(pattern, '', content)
+        print('   [+] Content removed')
+        return sanitized_content
     else:
-        print(f"The file {file_path} does not exist.")
+        print('   [-] No XXE found')
+        
+    print('[+] Step 1. Done')
+    return content
 
 
-def search_dtd_in_svg(svg_file):
-    pattern = r'^<\?xml.*<!DOCTYPE.*?>'
-    with open(svg_file, 'r', encoding='utf-8') as file:
-        content = file.read()
-    
+def search_dtd_in_svg(content):
+    '''Search for DTD'''
+    print('[+] Step 2. Searching for DTD')
+    pattern = r'<!DOCTYPE[^>]*>([\s\S]*?)>'
     match = re.search(pattern, content, re.IGNORECASE | re.DOTALL)
-    return print(f'found DTD{match}')
 
-def search_entity_in_svg(svg_file):
-    pattern = r'!ENTITY'
-    with open(svg_file, 'r', encoding='utf-8') as file:
-        content = file.read()
     
+    if match:
+        print(f'[!] Found DTD {match}')
+        sanitized_content = re.sub(pattern, '', content)
+        print('   [+] Content removed')
+        return sanitized_content
+    else:
+        print('   [-] No DTD found')
+        
+    print('[+] Step 2. Done')
+    return content
+
+
+def search_xss(content):
+    '''Search for XSS'''
+    print('[+] Step 3. Searching for XSS')
+    pattern = r'<script[^>]*>([\s\S]*?)<\/script>'
     match = re.search(pattern, content, re.IGNORECASE | re.DOTALL)
-    return print(f'found !ENTITY{match}')
+
+    if match:
+        print(f'   [!] Found XSS {match}')
+        sanitized_content = re.sub(pattern, '', content)
+        print('   [+] Content removed')
+        return sanitized_content
+    else:
+        print('   [-] No XSS found')
+        
+    print('[+] Step 3. Done')
+    return content
+
+
+def safe_save_content(filename, content):
+    try:
+        # Check if the file exists
+        if not os.path.exists(filename):
+            # Create the file if it doesn't exist
+            open(filename, 'x').close()
+        # Open the file in write mode
+        with open(filename, 'w') as file:
+            file.write(content)
+        print(f"[+] Content saved successfully to {filename}")
+    except IOError as e:
+        print(f"[-] An error occurred while saving content: {e}")
+    except Exception as e:
+        print(f"[-] An unexpected error occurred: {e}")
+
 
 def add_banner():
     banner_text = r'''
@@ -119,8 +112,27 @@ def add_banner():
  '''
     print(banner_text)
 
+
+def main():
+    file_path = input("Enter the path to the SVG file: ")
+    if os.path.exists(file_path):
+        print(f"[+] File loading successful. File name: {os.path.basename(file_path)}")
+    else:
+        print(f"The file {file_path} does not exist.")    
+    
+    with open(file_path, 'r', encoding='utf-8') as file:
+        content = file.read()
+
+    first_check = search_entity_in_svg(content)
+    second_check = search_dtd_in_svg(first_check)
+    third_check = search_xss(second_check)
+
+    safe_save_content('sanitized.svg', third_check)    
+    
+    # Parsing the sanitized file
+    parse_svg('sanitized.svg')
+
+
 if __name__ == "__main__":
     add_banner()
-    search_entity_in_svg('/Users/artem/Projects/SVGsanitizer/samples/XXE OOB Attack (Yunusov, 2013).xml')
-    search_dtd_in_svg('/Users/artem/Projects/SVGsanitizer/samples/XXE OOB Attack (Yunusov, 2013).xml')
     main()

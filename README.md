@@ -1,3 +1,10 @@
+  ______     ______                   _ _   _              
+ / ___\ \   / / ___|  ___  __ _ _ __ (_) |_(_)_______ _ __ 
+ \___ \\ \ / / |  _  / __|/ _` | '_ \| | __| |_  / _ \ '__|
+  ___) |\ V /| |_| | \__ \ (_| | | | | | |_| |/ /  __/ |   
+ |____/  \_/  \____| |___/\__,_|_| |_|_|\__|_/___\___|_| 
+
+
 Hosts that process SVG can potentially be vulnerable to SSRF, LFI, XSS, RCE because of the rich feature set of SVG.
 https://github.com/allanlw/svg-cheatsheet
 
@@ -19,15 +26,6 @@ https://cheatsheetseries.owasp.org/cheatsheets/XML_Security_Cheat_Sheet.html
 https://github.com/paulmuenzner/image-malware-detection-and-sanitization/
 https://docs.python.org/3/library/xml.html#xml-vulnerabilities
 
-Best practices:
-    Don’t allow DTDs
-    Don’t expand entities
-    Don’t resolve externals
-    Limit parse depth
-    Limit total input size
-    Limit parse time
-    Favor a SAX or iterparse-like parser for potential large data
-    Validate and properly quote arguments to XSL transformations and XPath queries
-    Don’t use XPath expression from untrusted sources
-    Don’t apply XSL transformations that come untrusted sources
-
+Search for XXE and remove it
+Search for DTD and remove it
+Search for XSS and remove it
