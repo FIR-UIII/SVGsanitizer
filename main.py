@@ -69,13 +69,28 @@ def search_xss(content):
     '''Search for XSS'''
     print('[+] Step 3. Searching for XSS')
     pattern = r'<script[^>]*>([\s\S]*?)<\/script>'
+    pattern1 = r'<(.*)onload(.*)'
+    pattern2 = r'<(.*)alert(.*)'
+    pattern3 = r'<(.*)script(.*)'
     match = re.search(pattern, content, re.IGNORECASE | re.DOTALL)
-
-    if match:
+    match1 = re.search(pattern1, content, re.IGNORECASE | re.DOTALL)
+    match2 = re.search(pattern2, content, re.IGNORECASE | re.DOTALL)
+    match3 = re.search(pattern3, content, re.IGNORECASE | re.DOTALL)
+    
+    check = any(i is not None for i in [match, match1, match2, match3])
+    if check:
         print(f'   [!] Found XSS {match}')
         sanitized_content = re.sub(pattern, '', content)
+        content = sanitized_content
+        sanitized_content = re.sub(pattern1, '', content)
+        content = sanitized_content
+        sanitized_content = re.sub(pattern2, '', content)
+        content = sanitized_content
+        sanitized_content = re.sub(pattern3, '', content)
+        content = sanitized_content
         print('   [+] Content removed')
         return sanitized_content
+    
     else:
         print('   [-] No XSS found')
         
